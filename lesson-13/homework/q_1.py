@@ -1,23 +1,62 @@
 import sqlite3
 
-insert = """
-    Insert into Roster Values('Benjamin Sisko', 'Human', 40), ('Jadzia Dax', 'Trill', 300), ('Kira Nerys', 'Bajoran', 29);
-"""
-with sqlite3.connect("roster.db") as con:
-    cursor = con.cursor()
-    con.execute("drop table if exists Roster;")
-    query = "Create table Roster(Name text, Species text, Age int);"
-    query2 = "Select * from Roster order by age desc"
+def task1():
+    conn = sqlite3.connect("roster.db")
+    cursor = conn.cursor()
     
-    data = cursor.execute(query)
-    con.execute(insert)
-    con.execute("UPDATE Roster SET Name='Ezri Dax' WHERE Name= 'Jadzia Dax'")
-    data3 = con.execute(query2)
-    data2 = con.execute("Select Name, Age from Roster WHERE Species = 'Bajoran'")
-    con.execute("Delete from Roster WHERE Age>100")
-    con.execute("ALTER TABLE Roster ADD column Rank TEXT")
-    con.execute("Update Roster SET Rank = 'Captain' WHERE Name = 'Benjamin Sisko'")
-    con.execute("Update Roster SET Rank = 'Lieutenant' WHERE Name = 'Ezri Dax'")
-    con.execute("Update Roster SET Rank = 'Major' WHERE Name = 'Kira Nerys'")
-print(data3.fetchall())
-print(data2.fetchall())
+    # Create Roster table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS Roster (
+            Name TEXT,
+            Species TEXT,
+            Age INTEGER
+        )
+    """)
+    
+    # Insert data
+    cursor.executemany("""
+        INSERT INTO Roster (Name, Species, Age) VALUES (?, ?, ?)
+    """, [
+        ("Benjamin Sisko", "Human", 40),
+        ("Jadzia Dax", "Trill", 300),
+        ("Kira Nerys", "Bajoran", 29)
+    ])
+    
+    # Update Name of Jadzia Dax to Ezri Dax
+    cursor.execute("""
+        UPDATE Roster SET Name = "Ezri Dax" WHERE Name = "Jadzia Dax"
+    """)
+    
+    # Query: Retrieve Name and Age of Bajoran species
+    cursor.execute("""
+        SELECT Name, Age FROM Roster WHERE Species = "Bajoran"
+    """)
+    print("Bajoran Characters:", cursor.fetchall())
+    
+    # Delete characters older than 100 years
+    cursor.execute("""
+        DELETE FROM Roster WHERE Age > 100
+    """)
+    
+    # Add Rank column
+    cursor.execute("""
+        ALTER TABLE Roster ADD COLUMN Rank TEXT
+    """)
+    
+    # Update Rank values
+    cursor.executemany("""
+        UPDATE Roster SET Rank = ? WHERE Name = ?
+    """, [
+        ("Captain", "Benjamin Sisko"),
+        ("Lieutenant", "Ezri Dax"),
+        ("Major", "Kira Nerys")
+    ])
+    
+    # Retrieve all characters sorted by Age descending
+    cursor.execute("""
+        SELECT * FROM Roster ORDER BY Age DESC
+    """)
+    print("Sorted Roster:", cursor.fetchall())
+    
+    conn.commit()
+    conn.close()
