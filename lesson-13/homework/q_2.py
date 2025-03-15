@@ -1,26 +1,71 @@
 import sqlite3
 
-insert = """
-    Insert into Books Values
-    ('To Kill a Mockingbird', 'Harper Lee',	1960, 'Fiction'),
-    ('1984', 'George Orwell', 1949,	'Dystopian'),
-    ('The Great Gatsby', 'F. Scott Fitzgerald',	1925, 'Classic');
-"""
-with sqlite3.connect("library.db") as con:
-    cursor = con.cursor()
-    con.execute("drop table if exists Roster;")
-    query = "Create table Books(Title text, Author text, Year_Published int, Genre text);"
-    query2 = "Select * from Books order by Year_Published"
+def task2():
+    conn = sqlite3.connect("library.db")
+    cursor = conn.cursor()
     
-    data = cursor.execute(query)
-    con.execute(insert)
-    con.execute("UPDATE Books SET Year_Published=1950 WHERE Title= '1984'")
-    data3 = con.execute(query2)
-    data2 = con.execute("Select Title, Author from Books WHERE Genre = 'Dystopian'")
-    con.execute("Delete from Books WHERE Year_Published<1950")
-    con.execute("ALTER TABLE Books ADD column Rating float")
-    con.execute("Update Books SET Rating = 4.8 WHERE Title = 'To Kill a Mockingbird'")
-    con.execute("Update Books SET Rating = 4.7 WHERE Title = '1984'")
-    con.execute("Update Books SET Rating = 4.5 WHERE Title = 'The Great Gatsby'")
-print(data3.fetchall())
-print(data2.fetchall())
+    # Create Books table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS Books (
+            Title TEXT,
+            Author TEXT,
+            Year_Published INTEGER,
+            Genre TEXT
+        )
+    """)
+
+    # Check if data already exists before inserting to avoid duplicates
+    cursor.execute("SELECT COUNT(*) FROM Books")
+    if cursor.fetchone()[0] == 0:
+        cursor.executemany("""
+            INSERT INTO Books (Title, Author, Year_Published, Genre) VALUES (?, ?, ?, ?)
+        """, [
+            ("To Kill a Mockingbird", "Harper Lee", 1960, "Fiction"),
+            ("1984", "George Orwell", 1949, "Dystopian"),
+            ("The Great Gatsby", "F. Scott Fitzgerald", 1925, "Classic")
+        ])
+    
+    # Commit before modifying the structure
+    conn.commit()
+    
+    # Update Year_Published for "1984"
+    cursor.execute("""
+        UPDATE Books SET Year_Published = 1950 WHERE Title = "1984"
+    """)
+    
+    # Query: Retrieve Title and Author of Dystopian books
+    cursor.execute("""
+        SELECT Title, Author FROM Books WHERE Genre = "Dystopian"
+    """)
+    print("Dystopian Books:", cursor.fetchall())
+
+    # Delete books published before 1950
+    cursor.execute("""
+        DELETE FROM Books WHERE Year_Published < 1950
+    """)
+    
+    # Add Rating column (check if it already exists to avoid errors)
+    try:
+        cursor.execute("""
+            ALTER TABLE Books ADD COLUMN Rating REAL
+        """)
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+    
+    # Update Rating values
+    cursor.executemany("""
+        UPDATE Books SET Rating = ? WHERE Title = ?
+    """, [
+        (4.8, "To Kill a Mockingbird"),
+        (4.7, "1984"),
+        (4.5, "The Great Gatsby")
+    ])
+    
+    # Retrieve all books sorted by Year_Published ascending
+    cursor.execute("""
+        SELECT * FROM Books ORDER BY Year_Published ASC
+    """)
+    print("Sorted Books:", cursor.fetchall())
+    
+    conn.commit()
+    conn.close()
